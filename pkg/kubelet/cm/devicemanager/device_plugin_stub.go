@@ -45,7 +45,8 @@ type Stub struct {
 	server *grpc.Server
 
 	// allocFunc is used for handling allocation request
-	allocFunc stubAllocFunc
+	allocFunc   stubAllocFunc
+	releaseFunc stubReleaseFunc
 
 	registrationStatus chan watcherapi.RegistrationStatus // for testing
 	endpoint           string                             // for testing
@@ -54,9 +55,16 @@ type Stub struct {
 
 // stubAllocFunc is the function called when receive an allocation request from Kubelet
 type stubAllocFunc func(r *pluginapi.AllocateRequest, devs map[string]pluginapi.Device) (*pluginapi.AllocateResponse, error)
+type stubReleaseFunc func(r *pluginapi.ReleaseRequest, devs map[string]pluginapi.Device) (*pluginapi.ReleaseResponse, error)
 
 func defaultAllocFunc(r *pluginapi.AllocateRequest, devs map[string]pluginapi.Device) (*pluginapi.AllocateResponse, error) {
 	var response pluginapi.AllocateResponse
+
+	return &response, nil
+}
+
+func defaultReleaseFunc(r *pluginapi.ReleaseRequest, devs map[string]pluginapi.Device) (*pluginapi.ReleaseResponse, error) {
+	var response pluginapi.ReleaseResponse
 
 	return &response, nil
 }
@@ -72,7 +80,8 @@ func NewDevicePluginStub(devs []*pluginapi.Device, socket string, name string, p
 		stop:   make(chan interface{}),
 		update: make(chan []*pluginapi.Device),
 
-		allocFunc: defaultAllocFunc,
+		allocFunc:   defaultAllocFunc,
+		releaseFunc: defaultReleaseFunc,
 	}
 }
 
@@ -227,6 +236,17 @@ func (m *Stub) Allocate(ctx context.Context, r *pluginapi.AllocateRequest) (*plu
 	}
 
 	return m.allocFunc(r, devs)
+}
+
+func (m *Stub) Release(ctx context.Context, r *pluginapi.ReleaseRequest) (*pluginapi.ReleaseResponse, error) {
+	log.Printf("Release, %+v", r)
+	devs := make(map[string]pluginapi.Device)
+
+	for _, dev := range m.devs {
+		devs[dev.ID] = *dev
+	}
+
+	return m.releaseFunc(r, devs)
 }
 
 func (m *Stub) cleanup() error {

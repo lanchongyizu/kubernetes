@@ -42,6 +42,8 @@ type Manager interface {
 	// currently available devices.
 	Allocate(node *schedulercache.NodeInfo, attrs *lifecycle.PodAdmitAttributes) error
 
+	Release(pod *v1.Pod) error
+
 	// Stop stops the manager.
 	Stop() error
 

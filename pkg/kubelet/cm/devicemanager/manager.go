@@ -340,6 +340,21 @@ func (m *ManagerImpl) Allocate(node *schedulercache.NodeInfo, attrs *lifecycle.P
 	return nil
 }
 
+func (m *ManagerImpl) Release(pod *v1.Pod) error {
+	for _, container := range pod.Spec.InitContainers {
+		if err := m.releaseContainerResources(pod, &container); err != nil {
+			return err
+		}
+	}
+	for _, container := range pod.Spec.Containers {
+		if err := m.releaseContainerResources(pod, &container); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 // Register registers a device plugin.
 func (m *ManagerImpl) Register(ctx context.Context, r *pluginapi.RegisterRequest) (*pluginapi.Empty, error) {
 	glog.Infof("Got registration request from device plugin with resource name %q", r.ResourceName)
@@ -708,6 +723,38 @@ func (m *ManagerImpl) allocateContainerResources(pod *v1.Pod, container *v1.Cont
 
 	// Checkpoints device to container allocation information.
 	return m.writeCheckpoint()
+}
+
+func (m *ManagerImpl) releaseContainerResources(pod *v1.Pod, container *v1.Container) error {
+	podUID := string(pod.UID)
+	contName := container.Name
+	for k, v := range container.Resources.Limits {
+		resource := string(k)
+		needed := int(v.Value())
+		glog.V(3).Infof("releases %d %s", needed, resource)
+		if !m.isDevicePluginResource(resource) {
+			continue
+		}
+
+		m.mutex.Lock()
+		allocDevices := m.podDevices.containerDevices(podUID, contName, resource)
+		m.mutex.Unlock()
+
+		devs := allocDevices.UnsortedList()
+
+		m.mutex.Lock()
+		eI, ok := m.endpoints[resource]
+		m.mutex.Unlock()
+		if !ok {
+			return fmt.Errorf("Unknown Device Plugin %s", resource)
+		}
+
+		glog.V(3).Infof("Making release request for devices %v for device plugin %s", devs, resource)
+		if _, err := eI.e.release(devs); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // GetDeviceRunContainerOptions checks whether we have cached containerDevices

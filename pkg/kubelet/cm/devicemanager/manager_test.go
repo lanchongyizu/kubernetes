@@ -537,6 +537,7 @@ func (a *activePodsStub) updateActivePods(newPods []*v1.Pod) {
 
 type MockEndpoint struct {
 	allocateFunc func(devs []string) (*pluginapi.AllocateResponse, error)
+	releaseFunc  func(devs []string) (*pluginapi.ReleaseResponse, error)
 	initChan     chan []string
 }
 
@@ -553,6 +554,13 @@ func (m *MockEndpoint) preStartContainer(devs []string) (*pluginapi.PreStartCont
 func (m *MockEndpoint) allocate(devs []string) (*pluginapi.AllocateResponse, error) {
 	if m.allocateFunc != nil {
 		return m.allocateFunc(devs)
+	}
+	return nil, nil
+}
+
+func (m *MockEndpoint) release(devs []string) (*pluginapi.ReleaseResponse, error) {
+	if m.releaseFunc != nil {
+		return m.releaseFunc(devs)
 	}
 	return nil, nil
 }

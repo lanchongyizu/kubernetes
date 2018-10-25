@@ -631,6 +631,10 @@ func (cm *containerManagerImpl) UpdatePluginResources(node *schedulercache.NodeI
 	return cm.deviceManager.Allocate(node, attrs)
 }
 
+func (cm *containerManagerImpl) ReleasePluginResources(pod *v1.Pod) error {
+	return cm.deviceManager.Release(pod)
+}
+
 func (cm *containerManagerImpl) SystemCgroupsLimit() v1.ResourceList {
 	cpuLimit := int64(0)
 

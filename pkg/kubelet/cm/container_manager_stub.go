@@ -97,6 +97,10 @@ func (cm *containerManagerStub) UpdatePluginResources(*schedulercache.NodeInfo, 
 	return nil
 }
 
+func (cm *containerManagerStub) ReleasePluginResources(*v1.Pod) error {
+	return nil
+}
+
 func (cm *containerManagerStub) InternalContainerLifecycle() InternalContainerLifecycle {
 	return &internalContainerLifecycleImpl{cpumanager.NewFakeManager()}
 }
